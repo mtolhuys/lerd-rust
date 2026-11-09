@@ -165,7 +165,7 @@ class FakeCargoTest(unittest.TestCase):
         main = os.path.join(self.root, "src", "main.rs")
         before = os.stat(main)
         dev = self.start(FAKE_BUILD_SECONDS="0.8")
-        wait_for(lambda: self.state().get("phase") == "building", message="building")
+        wait_for(lambda: os.path.exists(os.path.join(self.logs, "read.log")), message="the build read the source")
         with open(main, "w") as handle:
             handle.write("v9")
         os.utime(main, ns=(before.st_atime_ns, before.st_mtime_ns))

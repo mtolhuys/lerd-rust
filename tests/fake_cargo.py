@@ -48,6 +48,7 @@ elif args[:1] == ["build"]:
     record("builds.log", " ".join(args))
     with open(os.path.join(root, "src", "main.rs")) as handle:
         source = handle.read().strip()
+    record("read.log", source)  # tests wait for this before changing the source
     time.sleep(float(os.environ.get("FAKE_BUILD_SECONDS", "0.2")))
     print("   Compiling app v0.1.0", file=sys.stderr, flush=True)
     # Something a build script or proc macro printed that looks like JSON.
