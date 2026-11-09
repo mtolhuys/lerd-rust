@@ -229,12 +229,16 @@ class FakeCargoTest(unittest.TestCase):
 
     def test_refuses_without_cargo_toml_or_cargo(self):
         os.unlink(os.path.join(self.root, "Cargo.toml"))
-        result = subprocess.run([sys.executable, DEV], cwd=self.root, env=self.env, capture_output=True, text=True)
+        result = subprocess.run([sys.executable, DEV], cwd=self.root, env=self.env, capture_output=True, text=True,
+                                timeout=30)
         self.assertEqual(result.returncode, 2)
         self.assertIn("no Cargo.toml", result.stderr)
         write(os.path.join(self.root, "Cargo.toml"), "")
+        # Hide every place cargo could be found, CARGO_HOME included (CI sets it).
         env = dict(self.env, LERD_RUST_CARGO="", PATH="/nonexistent", HOME=self.tmp.name)
-        result = subprocess.run([sys.executable, DEV], cwd=self.root, env=env, capture_output=True, text=True)
+        env.pop("CARGO_HOME", None)
+        result = subprocess.run([sys.executable, DEV], cwd=self.root, env=env, capture_output=True, text=True,
+                                timeout=30)
         self.assertEqual(result.returncode, 2)
         self.assertIn("cargo was not found", result.stderr)
         self.assertEqual(result.stdout, "")

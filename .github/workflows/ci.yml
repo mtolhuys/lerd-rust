@@ -11,6 +11,7 @@ jobs:
   test:
     name: Python 3.13 with cargo
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +27,7 @@ jobs:
     name: Python 3.9
     runs-on: ubuntu-latest
     container: python:3.9-slim
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Tests
