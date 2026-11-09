@@ -1,0 +1,107 @@
+api_version: 1
+name: rust
+lerd: ">=1.38"
+version: 0.1.0
+description: Rebuild-on-save dev server, cargo commands, a build tab and AI tools for Rust sites
+platforms: [linux]
+docs: DOCS.md
+icon: ui/icon.svg
+screenshots: [docs/tab.png]
+# Only to say a build failed while the previous build keeps serving, once
+# per failure; lerd asks before allowing it.
+notifications: true
+
+commands:
+  - name: dev
+    usage: "Run the app and rebuild it on every save; the site's dev command (lerd rust:dev -- <cargo run args>)"
+    run: bin/dev
+  - name: setup
+    usage: Make lerd rust:dev this site's dev command in .lerd.yaml
+    run: bin/setup
+  - name: status
+    usage: Show the dev server's last build for the site in this directory
+    run: bin/status
+
+site_commands:
+  - name: check
+    label: Cargo check
+    description: Type-check every target (cargo check --all-targets)
+    run: bin/cargo-check
+  - name: test
+    label: Cargo test
+    description: Run the tests (cargo test)
+    run: bin/cargo-test
+  - name: clippy
+    label: Cargo clippy
+    description: Lint every target (cargo clippy --all-targets)
+    run: bin/cargo-clippy
+  - name: fmt-check
+    label: Cargo fmt --check
+    description: Show what rustfmt would change, without changing it
+    run: bin/cargo-fmt-check
+  - name: fmt
+    label: Cargo fmt
+    description: Format the code with rustfmt (changes files)
+    confirm: true
+    run: bin/cargo-fmt
+
+mcp:
+  skill: SKILL.md
+  tools:
+    - name: status
+      description: >-
+        The Rust dev server of a lerd site: whether it rebuilds on save, the last build's
+        result with its compiler errors and warnings, whether a failed build left the
+        previous one serving, and whether the app answers on its HOST and PORT
+      input_schema:
+        type: object
+        properties:
+          site:
+            type: string
+            description: Site name
+          branch:
+            type: string
+            description: A worktree's branch, for that worktree instead of the main checkout
+        required: [site]
+      run: bin/status
+    - name: check
+      description: >-
+        Run cargo check in a lerd site's Rust project and return its errors and
+        warnings with file, line and the compiler's full explanation
+      input_schema:
+        type: object
+        properties:
+          site:
+            type: string
+            description: Site name
+          branch:
+            type: string
+            description: A worktree's branch, for that worktree instead of the main checkout
+          all_targets:
+            type: boolean
+            description: Check tests, examples and benches too (default true)
+          package:
+            type: string
+            description: Only this workspace package
+        required: [site]
+      run: bin/check
+      timeout: 10m
+
+api:
+  - path: status
+    methods: [GET]
+    run: bin/status
+  - path: project
+    methods: [GET]
+    run: bin/project
+    loopback_only: true
+  - path: check
+    methods: [POST]
+    run: bin/check
+    loopback_only: true
+    timeout: 10m
+
+ui:
+  site_tab:
+    title: Rust
+    entry: ui/site.html
