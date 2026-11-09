@@ -9,17 +9,26 @@ permissions:
 
 jobs:
   test:
+    name: Python 3.13 with cargo
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: ["3.9", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.13"
       - uses: dtolnay/rust-toolchain@stable
+      - name: Tests, including a real cargo build
+        run: python -m unittest discover -s tests -v
+
+  oldest-python:
+    # Hosted runners no longer ship Python 3.9, the oldest the plugin supports,
+    # so it runs in the official image. The real-cargo test skips here.
+    name: Python 3.9
+    runs-on: ubuntu-latest
+    container: python:3.9-slim
+    steps:
+      - uses: actions/checkout@v4
       - name: Tests
         run: python -m unittest discover -s tests -v
-      - name: Compiles on the oldest supported Python
+      - name: Compiles on Python 3.9
         run: python -m compileall -q lib bin tests
