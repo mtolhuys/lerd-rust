@@ -11,6 +11,15 @@ import time
 
 version = sys.argv[1]
 log_dir = os.environ["FAKE_CARGO_LOG"]
+# Fail the first N starts, like a database that is not ready yet at boot.
+fail_first = int(os.environ.get("FAKE_FAIL_FIRST", "0"))
+if fail_first:
+    counter = os.path.join(log_dir, "starts")
+    starts = int(open(counter).read()) + 1 if os.path.exists(counter) else 1
+    with open(counter, "w") as out:
+        out.write(str(starts))
+    if starts <= fail_first:
+        sys.exit(1)
 child = subprocess.Popen(["sleep", "300"])
 with open(os.path.join(log_dir, "apps.log"), "a") as out:
     out.write(json.dumps({

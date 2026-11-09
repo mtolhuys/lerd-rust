@@ -104,6 +104,7 @@
     else if (app && app.listening === false) pills.append(pill('not answering on ' + app.address, 'warn'));
     else if (server && server.phase !== 'stopped' && server.app_exit !== null && server.app_exit !== undefined) {
       pills.append(pill('app exited (' + server.app_exit + ')', 'bad'));
+      if (server.restart_at) pills.append(pill('starting again', 'accent'));
     }
 
     const note = $('note');

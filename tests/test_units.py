@@ -368,6 +368,17 @@ class WatcherPartsTest(unittest.TestCase):
         self.assertFalse(watcher.wants_color({}, pipe))
 
 
+class RetriesTest(unittest.TestCase):
+    def test_backoff_then_wait_for_a_save_and_reset_after_a_stable_run(self):
+        retries = watcher.Retries()
+        delays = [retries.after_exit(0.1) for _ in range(len(watcher.RETRY_DELAYS) + 1)]
+        self.assertEqual(delays, [float(d) for d in watcher.RETRY_DELAYS] + [None])
+        self.assertEqual(retries.after_exit(watcher.STABLE_RUN), float(watcher.RETRY_DELAYS[0]))
+        retries.after_exit(0.1)
+        retries.reset()
+        self.assertEqual(retries.after_exit(0.1), float(watcher.RETRY_DELAYS[0]))
+
+
 class StateTest(unittest.TestCase):
     def test_round_trip_and_dead_watcher(self):
         with tempfile.TemporaryDirectory() as data, tempfile.TemporaryDirectory() as checkout:

@@ -43,6 +43,31 @@ READY_WARNING_AFTER = 30.0
 DEBOUNCE = 0.2
 # A file that keeps changing must not hold the loop forever.
 MAX_QUIET_WAIT = 2.0
+# Delays before starting an app again after it exited on its own. A start that
+# races something not ready yet (a database container, a network address that
+# appears after boot) recovers by itself; a real error stops retrying after a
+# few minutes instead of filling the log forever.
+RETRY_DELAYS = (1, 2, 5, 10, 20, 30, 60, 60)
+# An app that ran this long before exiting gets the full schedule again.
+STABLE_RUN = 60.0
+
+
+class Retries:
+    def __init__(self) -> None:
+        self.attempt = 0
+
+    def after_exit(self, ran_for: float) -> Optional[float]:
+        """Seconds to wait before starting again, or None to wait for a save."""
+        if ran_for >= STABLE_RUN:
+            self.attempt = 0
+        if self.attempt >= len(RETRY_DELAYS):
+            return None
+        delay = RETRY_DELAYS[self.attempt]
+        self.attempt += 1
+        return float(delay)
+
+    def reset(self) -> None:
+        self.attempt = 0
 
 Snapshot = Dict[str, Tuple[int, int]]
 
@@ -415,6 +440,9 @@ class Watcher:
         self.app_started = None  # type: Optional[float]
         self.app_exit = None  # type: Optional[int]
         self.last = None  # type: Optional[dict]
+        self.executable = None  # type: Optional[dict]
+        self.retries = Retries()
+        self.retry_at = None  # type: Optional[float]
         self.failure_notified = False
         self.probe = Probe(env)
         self.site = env.get("LERD_SITE", "")
@@ -459,10 +487,13 @@ class Watcher:
             "build": self.last,
             "app": app,
             "app_exit": self.app_exit,
+            "restart_at": self.retry_at,
             "serving_previous": bool(self.app is not None and self.last is not None and not self.last["ok"]),
         }, self.env)
 
     def start_build(self) -> None:
+        self.retries.reset()
+        self.retry_at = None
         if self.build is not None:
             self.build.cancel()
             log("stopped the unfinished build")
@@ -482,6 +513,7 @@ class Watcher:
             self.failure_notified = False
             log(f"build finished in {result['duration']}s"
                 + (f" with {result['warnings']} warning(s)" if result["warnings"] else ""))
+            self.executable = executable
             self.start_app(executable)
         else:
             serving = "still serving the previous build" if self.app is not None else "nothing is serving the site yet"
@@ -555,9 +587,26 @@ class Watcher:
             return
         # The app is gone; make sure nothing it started keeps the port.
         stop_group(self.app, grace=2.0)
+        ran_for = time.time() - (self.app_started or time.time())
         self.app = None
         self.app_exit = code
-        log(f"the app exited with status {code}; save a file to rebuild and start it again")
+        delay = self.retries.after_exit(ran_for)
+        if delay is None:
+            self.retry_at = None
+            log(f"the app exited with status {code} again; save a file to rebuild and start it")
+        else:
+            self.retry_at = time.time() + delay
+            log(f"the app exited with status {code}; starting it again in {delay:.0f}s (a save restarts it at once)")
+        self.save()
+
+    def retry_app(self) -> None:
+        if self.app is not None or self.build is not None or self.retry_at is None:
+            return
+        if time.time() < self.retry_at:
+            return
+        self.retry_at = None
+        log("starting the app again")
+        self.start_app(self.executable)
         self.save()
 
     def wait_for_quiet(self, tree: Tree, snapshot: Snapshot) -> Tuple[Snapshot, List[str]]:
@@ -600,6 +649,7 @@ class Watcher:
             if self.build is not None and self.build.done():
                 self.finish_build()
             self.watch_app()
+            self.retry_app()
             self.stop.wait(poll)
             if self.stop.is_set():
                 break

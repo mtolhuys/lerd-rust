@@ -250,7 +250,10 @@ def describe(status: Dict) -> List[str]:
         else:
             lines.append("App      running")
     elif server.get("app_exit") is not None:
-        lines.append(f"App      exited with status {server['app_exit']}")
+        again = ""
+        if server.get("restart_at") and phase != "stopped":
+            again = f", starting again in {max(0, int(server['restart_at'] - now))}s"
+        lines.append(f"App      exited with status {server['app_exit']}{again}")
     if build:
         for item in build["diagnostics"][:10]:
             where = f"{item['file']}:{item['line']}:{item['column']}" if item.get("file") else "-"

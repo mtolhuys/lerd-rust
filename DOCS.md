@@ -34,6 +34,7 @@ The dev server logs a warning, and the Rust tab shows one, when the app runs but
 - After a successful build it stops the running app with everything it started, and starts the program that build made, with the environment `cargo run` would give it. A save that lands between the build and the start is never compiled into the running site; it is built next. When a build makes several programs and none was named, it uses `cargo run`.
 - After a failed build it keeps the previous build serving and says so in the Dev Server log, on the Rust tab and, once per failure, in a notification if you allowed them.
 - A save during a build stops that build and starts a new one.
+- When the app exits on its own, for example because a database or a network address was not ready yet when the machine started, it is started again after 1, 2, 5, 10, 20, 30 and 60 seconds. If it keeps failing for a few minutes it waits for the next save instead, so a real error does not fill the log.
 - It watches the whole cargo workspace, skipping cargo's target folder (wherever it is configured), `.git`, `node_modules`, hidden folders other than `.cargo`, `.lerd.yaml`, symbolic links, editor swap files, and what a running app writes: SQLite databases with their journals (`.db`, `.sqlite`, `-wal`, `-shm`, `-journal`) and `.log` files.
 
 | Option | |

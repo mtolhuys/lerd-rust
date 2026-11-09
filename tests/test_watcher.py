@@ -142,9 +142,24 @@ class FakeCargoTest(unittest.TestCase):
         wait_for(lambda: get(self.port) == "v1", message="serving")
         app, child = self.apps()[0]["pid"], self.apps()[0]["child"]
         os.kill(app, signal.SIGKILL)
-        wait_for(lambda: self.state().get("phase") == "exited", message="exit recorded")
-        self.assertEqual(self.state()["app_exit"], -9)
+        wait_for(lambda: self.state().get("app_exit") == -9, message="exit recorded")
+        self.assertIsNotNone(self.state()["restart_at"])
         wait_for(lambda: not alive(child), message="orphaned child stopped")
+        # Started again on its own, without a save.
+        wait_for(lambda: len(self.apps()) == 2 and get(self.port) == "v1", message="started again")
+        self.assertIsNone(self.state()["app_exit"])
+        self.assertIn("starting it again in 1s", self.log())
+        stop(dev)
+
+    def test_an_app_failing_at_start_is_started_again_with_backoff(self):
+        dev = self.start(FAKE_FAIL_FIRST="2")
+        wait_for(lambda: get(self.port) == "v1", timeout=20, message="up after two failed starts")
+        with open(os.path.join(self.logs, "starts")) as handle:
+            self.assertEqual(handle.read(), "3")
+        log = self.log()
+        self.assertIn("starting it again in 1s", log)
+        self.assertIn("starting it again in 2s", log)
+        self.assertEqual(self.builds(), 1)  # no rebuild needed to start again
         stop(dev)
 
     def test_no_false_alarm_while_the_app_starts(self):

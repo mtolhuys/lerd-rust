@@ -28,7 +28,7 @@ Both tools take `branch` to look at one of the site's worktrees instead of its m
   let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
   ```
 
-- `dev_server.app_exit` is set: the app exited (a panic at start-up, a port already in use). Its output is in the site's Dev Server log: `journalctl --user -u lerd-app-<site> -n 100`.
+- `dev_server.app_exit` is set: the app exited (a panic at start-up, a port already in use, a database not ready yet). While `dev_server.restart_at` is set the dev server starts it again by itself at that time, backing off from 1s to 60s; once it gives up after a few minutes, a save starts it. Its output is in the site's Dev Server log: `journalctl --user -u lerd-app-<site> -n 100`.
 - `dev.watcher: false`: the site does not rebuild on save. Tell the user to run `lerd rust:setup` and then `lerd link` in the project; both ask them to confirm, so do not run them on their behalf.
 - `dev_server.phase: "stopped"`: the dev server is not running, for example because the site is paused. `lerd unpause` or `lerd restart` in the project starts it.
 
